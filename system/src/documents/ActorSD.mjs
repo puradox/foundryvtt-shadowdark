@@ -1,4 +1,4 @@
-export default class ActorSD extends Actor {
+export default class ActorSD extends foundry.documents.Actor {
 
 	_abilityModifier(abilityScore) {
 		if (abilityScore >= 1 && abilityScore <= 3) return -4;
@@ -186,6 +186,12 @@ export default class ActorSD extends Actor {
 			prototypeToken.actorLink = true;
 		}
 
+		if (data.type === "Vehicle") {
+			prototypeToken.actorLink = true;
+			prototypeToken.bar1 = { attribute: "attributes.hp" };
+			prototypeToken.disposition = 0;
+		}
+
 		const update = {prototypeToken};
 
 		if (!data.img) {
@@ -219,8 +225,11 @@ export default class ActorSD extends Actor {
 					+ this.system.abilities[ability].bonus
 			);
 		}
-		else {
+		if (this.type === "NPC") {
 			return this.system.abilities[ability].mod;
+		}
+		if (this.type === "Vehicle") {
+			return 0;
 		}
 	}
 
@@ -612,6 +621,10 @@ export default class ActorSD extends Actor {
 
 
 	async canUseMagicItems() {
+		if (this.type === "Vehicle") {
+			return false;
+		}
+
 		const characterClass = await this.getClass();
 
 		const spellcastingClass =
@@ -737,6 +750,11 @@ export default class ActorSD extends Actor {
 
 
 	async getArmorClass() {
+		if (this.type === "Vehicle") {
+			// AC is a set value for all Vehicles.
+			return this.system.attributes.ac.value;
+		}
+
 		const dexModifier = this.abilityModifier("dex");
 
 		let baseArmorClass = shadowdark.defaults.BASE_ARMOR_CLASS;
@@ -858,6 +876,10 @@ export default class ActorSD extends Actor {
 
 
 	getCalculatedAbilities() {
+		if (this.type === "Vehicle") {
+			return {};
+		}
+
 		const abilities = {};
 
 		for (const ability of CONFIG.SHADOWDARK.ABILITY_KEYS) {
@@ -1047,6 +1069,10 @@ export default class ActorSD extends Actor {
 
 
 	async isSpellCaster() {
+		if (this.type === "Vehicle") {
+			return false;
+		}
+
 		const characterClass = await this.getClass();
 
 		const spellcastingClass =
@@ -1117,6 +1143,11 @@ export default class ActorSD extends Actor {
 
 
 	numGearSlots() {
+		if (this.type === "Vehicle") {
+			const { hp, slotsPerHp } = this.system.attributes;
+			return (hp.value ?? 0) * (slotsPerHp ?? 0);
+		}
+
 		let gearSlots = shadowdark.defaults.GEAR_SLOTS;
 
 		if (this.type === "Player") {
@@ -1672,6 +1703,26 @@ export default class ActorSD extends Actor {
 			content,
 			rollMode: CONST.DICE_ROLL_MODES.PUBLIC,
 		});
+	}
+
+
+	async vehiclePropertyItems() {
+		const propertyItems = [];
+		for (const uuid of this.system.properties ?? []) {
+			const item = await fromUuid(uuid);
+			if (item) propertyItems.push(item);
+		}
+		return propertyItems;
+	}
+
+
+	async hasVehicleProperty(property) {
+		property = property.slugify();
+		const propertyItems = await this.vehiclePropertyItems();
+		const propertyItem = propertyItems.find(
+			p => p.name.slugify() === property
+		);
+		return propertyItem ? true : false;
 	}
 
 }
