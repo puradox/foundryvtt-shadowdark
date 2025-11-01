@@ -1,3 +1,10 @@
+# v3.7.0
+
+## Enhancements
+- [#1150] Add Vehicle actor type
+
+---
+
 # v3.6.0
 
 ## Bugfixes
